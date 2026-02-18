@@ -408,8 +408,11 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 2rem;
   margin-top: 3rem;
+  /* Clip overflow so cards slide in cleanly */
+  overflow: visible;
 }
 
+/* ── Card slide-in entrance animations ── */
 .doc-card {
   background: rgba(18, 24, 31, 0.6);
   backdrop-filter: blur(10px);
@@ -420,6 +423,59 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+
+  /* Start hidden & offset – JS adds .card-visible to trigger the slide */
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Card 1 (index 0) slides in from the left */
+.doc-card[data-index="0"] {
+  transform: translateX(-120px) rotate(-4deg);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Card 2 (index 1) slides in from the bottom */
+.doc-card[data-index="1"] {
+  transform: translateY(100px) scale(0.92);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s;
+}
+
+/* Card 3 (index 2) slides in from the right */
+.doc-card[data-index="2"] {
+  transform: translateX(120px) rotate(4deg);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s,
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;
+}
+
+/* Final resting state – added by JS */
+.doc-card.card-visible {
+  opacity: 1;
+  transform: translateX(0) translateY(0) rotate(0deg) scale(1) !important;
+}
+
+/* Subtle "deal" shimmer that plays once on entry */
+@keyframes cardShimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.doc-card.card-visible::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(212, 175, 55, 0.12) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: cardShimmer 0.8s ease-out forwards;
+  pointer-events: none;
 }
 
 .doc-card::before {
