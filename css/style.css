@@ -748,3 +748,160 @@ body {
   .documents-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Form additions for updated inputs ── */
+.form-section-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  border-bottom: 1px solid rgba(212,175,55,0.25);
+  padding-bottom: 0.4rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.form-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.form-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.form-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-doc-field {
+  width: 200px !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.9rem !important;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.form-doc-field:not([disabled]) {
+  opacity: 1;
+}
+
+.form-advocate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.btn-icon-add {
+  background: var(--accent);
+  color: var(--primary);
+  border: none;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.btn-icon-add:hover { opacity: 0.85; }
+
+.form-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  margin: 0.5rem 0 1rem;
+  cursor: pointer;
+}
+
+/* Person form card (New Petition) */
+.person-form-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.person-form-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-add-party {
+  background: transparent;
+  border: 1px dashed rgba(212,175,55,0.4);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.25rem;
+}
+.btn-add-party:hover {
+  background: rgba(212,175,55,0.08);
+  border-color: var(--accent);
+}
+
+/* Select option text color fix */
+.form-select option {
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+/* Extra executant fields spacing */
+#extraExecFields .form-group {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+  .form-doc-row { flex-direction: column; align-items: flex-start; }
+  .form-doc-field { width: 100% !important; }
+}
