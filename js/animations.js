@@ -33,15 +33,12 @@ const observer = new IntersectionObserver((entries) => {
             }
             
             if (entry.target.classList.contains('doc-card')) {
-                entry.target.style.opacity = '0';
-                entry.target.style.transform = 'translateY(30px)';
-                
-                setTimeout(() => {
-                    entry.target.style.transition = 'all 0.6s ease';
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, entry.target.dataset.index * 100);
-                
+                // Small rAF delay so the browser has painted the start position
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        entry.target.classList.add('card-visible');
+                    });
+                });
                 observer.unobserve(entry.target);
             }
         }
