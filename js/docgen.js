@@ -1,345 +1,599 @@
-// Document Generation using docx.js (v7.x)
-// docx is loaded globally from CDN as window.docx
-
-function getDocx() {
-    const d = window.docx;
-    if (!d) throw new Error('docx library not loaded. Please check your internet connection and reload the page.');
-    return d;
+// Wait for the docx library to be available (loaded dynamically)
+function waitForDocx(timeout = 8000) {
+    return new Promise((resolve, reject) => {
+        const start = Date.now();
+        (function check() {
+            if (typeof docx !== 'undefined' && docx.Packer) return resolve();
+            if (Date.now() - start > timeout) return reject(new Error('docx library timed out'));
+            setTimeout(check, 80);
+        })();
+    });
 }
 
+// Document Generation using docx.js
+
 async function generateDocument(docType, data) {
+    try {
+        await waitForDocx();
+    } catch(e) {
+        throw new Error('docx library not loaded. Please check your internet connection and reload the page.');
+    }
+
     const generators = {
         'certified-copy': generateCertifiedCopy,
         'vakalatnama': generateVakalatnama,
         'new-petition': generateNewPetition
     };
+    
     const generator = generators[docType];
-    if (!generator) throw new Error('Invalid document type');
+    if (!generator) {
+        throw new Error('Invalid document type');
+    }
+    
     return await generator(data);
 }
 
-// ─────────────────────── CERTIFIED COPY ───────────────────────
 async function generateCertifiedCopy(data) {
-    const { Document, Paragraph, TextRun, AlignmentType, convertInchesToTwip,
-            Table, TableRow, TableCell, WidthType, BorderStyle } = getDocx();
-
-    const NIL = (BorderStyle.NIL !== undefined) ? BorderStyle.NIL : ((BorderStyle.NONE !== undefined) ? BorderStyle.NONE : 'nil');
-    const noBorder = { style: NIL, size: 0, color: 'FFFFFF' };
-    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
-
-    function partyTable(leftText, rightText) {
-        return new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder },
-            rows: [new TableRow({ children: [
-                new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, borders: noBorders,
-                    children: [new Paragraph({ children: [new TextRun({ text: leftText, size: 28, font: 'Times New Roman' })] })] }),
-                new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, borders: noBorders,
-                    children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: rightText, size: 28, font: 'Times New Roman' })] })] }),
-            ]})]
-        });
-    }
-
-    const children = [
-        new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: (data.Court || '').toUpperCase(), bold: true, size: 28, font: 'Times New Roman' })],
-            spacing: { after: 240 }
-        }),
-        new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: 'Case No. ' + (data.CaseNo || ''), size: 28, font: 'Times New Roman' })],
-            spacing: { after: 200 }
-        }),
-        partyTable((data.P_Title || '') + ' ' + (data.Plaintiff || ''), '\u2026' + (data.PRole || 'Petitioner')),
-        new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: 'VERSUS', size: 28, font: 'Times New Roman' })],
-            spacing: { before: 120, after: 120 }
-        }),
-        partyTable((data.D_Title || '') + ' ' + (data.Defendant || ''), '\u2026' + (data.DRole || 'Respondent')),
-        new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: 'APPLICATION FOR CERTIFIED COPY', bold: true, underline: {}, size: 28, font: 'Times New Roman' })],
-            spacing: { before: 480, after: 480 }
-        }),
-        new Paragraph({
-            children: [new TextRun({ text: 'The Applicant above named most respectfully submits as under:', size: 28, font: 'Times New Roman' })],
-            spacing: { after: 240 }
-        }),
-        new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
-            children: [new TextRun({ text: '1.\tThat the Applicant is the ' + (data.ApplicantType || 'Petitioner') + ' in the ' + (data.SuitType || 'Civil Suit') + ' bearing Case No. ' + (data.CaseNo || '') + ' of ' + (data.Year || '') + ' ' + (data.SuitStatus || 'pending') + ' before this Hon\u2019ble Court.', size: 28, font: 'Times New Roman' })],
-            spacing: { after: 200 }
-        }),
-        new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
-            children: [new TextRun({ text: '2.\tThat the said ' + (data.SuitType || 'Civil Suit') + ' was filed by ' + (data.P_Title || '') + ' ' + (data.Plaintiff || '') + ' against ' + (data.D_Title || '') + ' ' + (data.Defendant || '') + ' for legal relief.', size: 28, font: 'Times New Roman' })],
-            spacing: { after: 200 }
-        }),
-        new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
-            children: [new TextRun({ text: '3.\tThat the Applicant requires a certified copy of the following document(s):', size: 28, font: 'Times New Roman' })],
-            spacing: { after: 100 }
-        }),
-    ];
-
-    (data.Docs || []).forEach(function(d) {
-        children.push(new Paragraph({
-            children: [new TextRun({ text: '\t\u2022 ' + d, size: 28, font: 'Times New Roman' })],
-            spacing: { after: 80 }
-        }));
-    });
-
-    children.push(
-        new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
-            children: [new TextRun({ text: '4.\tThat the Applicant prays that this Hon\u2019ble Court may be pleased to issue the certified copy/copies of the aforesaid document(s) to the Applicant at the earliest.', size: 28, font: 'Times New Roman' })],
-            spacing: { before: 200, after: 400 }
-        }),
-        new Paragraph({ children: [new TextRun({ text: 'Place: ' + (data.Place || 'Margao'), size: 28, font: 'Times New Roman' })], spacing: { after: 80 } }),
-        new Paragraph({ children: [new TextRun({ text: 'Date: ' + (data.Date || ''), size: 28, font: 'Times New Roman' })], spacing: { after: 240 } }),
-        new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: data.Applicant || '', size: 28, font: 'Times New Roman' })], spacing: { after: 80 } }),
-        new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: data.Mobile || '', size: 28, font: 'Times New Roman' })] })
-    );
-
+    const { Document, Paragraph, TextRun, AlignmentType, TabStopPosition, TabStopType, convertInchesToTwip } = docx;
+    
     const doc = new Document({
-        sections: [{ properties: { page: { margin: {
-            top: convertInchesToTwip(1.2), right: convertInchesToTwip(1),
-            bottom: convertInchesToTwip(1), left: convertInchesToTwip(2)
-        }}}, children: children }]
+        sections: [{
+            properties: {
+                page: {
+                    margin: {
+                        top: convertInchesToTwip(1.2),
+                        right: convertInchesToTwip(1),
+                        bottom: convertInchesToTwip(1),
+                        left: convertInchesToTwip(2)
+                    }
+                }
+            },
+            children: [
+                // Court Name
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: (data.Court || '').toUpperCase(),
+                            bold: true,
+                            size: 28
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                // Case Number
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: `Case No. ${data.CaseNo || ''}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                // Parties
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `${data.Plaintiff || ''}\t\t…Petitioner`,
+                            size: 24
+                        })
+                    ],
+                    tabStops: [
+                        {
+                            type: TabStopType.RIGHT,
+                            position: TabStopPosition.MAX
+                        }
+                    ]
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: 'VERSUS',
+                            size: 24
+                        })
+                    ],
+                    spacing: { before: 100, after: 100 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `${data.Defendant || ''}\t\t…Respondent`,
+                            size: 24
+                        })
+                    ],
+                    tabStops: [
+                        {
+                            type: TabStopType.RIGHT,
+                            position: TabStopPosition.MAX
+                        }
+                    ],
+                    spacing: { after: 300 }
+                }),
+                
+                // Title
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: 'APPLICATION FOR CERTIFIED COPY',
+                            bold: true,
+                            underline: {},
+                            size: 24
+                        })
+                    ],
+                    spacing: { before: 300, after: 300 }
+                }),
+                
+                // Salutation
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'The Applicant above named most respectfully submits as under:',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                // Paragraphs
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `1.\tThat the Applicant is the Petitioner in the ${data.SuitType || ''} bearing Case No. ${data.CaseNo || ''} of ${data.Year || ''} pending before this Hon'ble Court.`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 150 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `2.\tThat the Applicant requires a certified copy of the following document(s):`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 100 }
+                }),
+                
+                // Documents list
+                ...(data.Docs || []).map(doc => 
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `\t• ${doc}`,
+                                size: 24
+                            })
+                        ],
+                        spacing: { after: 50 }
+                    })
+                ),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `3.\tThat the Applicant prays that this Hon'ble Court may be pleased to issue the certified copy/copies of the aforesaid document(s) to the Applicant at the earliest.`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { before: 150, after: 300 }
+                }),
+                
+                // Signature block
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `Place: ${data.Place || ''}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `Date: ${data.Date || new Date().toLocaleDateString()}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 150 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: data.Applicant || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: data.Mobile || '',
+                            size: 24
+                        })
+                    ]
+                })
+            ]
+        }]
     });
-
-    const blob = await window.docx.Packer.toBlob(doc);
-    downloadBlob(blob, 'Certified_Copy_' + (data.Applicant || 'Application').replace(/\s+/g, '_') + '.docx');
+    
+    const blob = await docx.Packer.toBlob(doc);
+    downloadBlob(blob, `Certified_Copy_${data.Applicant || 'Application'}.docx`);
 }
 
-// ─────────────────────── VAKALATNAMA ───────────────────────
 async function generateVakalatnama(data) {
-    const { Document, Paragraph, TextRun, AlignmentType, convertInchesToTwip,
-            Table, TableRow, TableCell, WidthType, BorderStyle } = getDocx();
-
-    const NIL = (BorderStyle.NIL !== undefined) ? BorderStyle.NIL : ((BorderStyle.NONE !== undefined) ? BorderStyle.NONE : 'nil');
-    const noBorder = { style: NIL, size: 0, color: 'FFFFFF' };
-    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
-
-    function partyTable(leftText, rightText) {
-        return new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder },
-            rows: [new TableRow({ children: [
-                new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, borders: noBorders,
-                    children: [new Paragraph({ children: [new TextRun({ text: leftText, size: 24, font: 'Times New Roman' })] })] }),
-                new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, borders: noBorders,
-                    children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: rightText, size: 24, font: 'Times New Roman' })] })] }),
-            ]})]
-        });
-    }
-
-    var iw = data.AppointmentType || 'I';
-    var isSing = iw === 'I';
-    var my = isSing ? 'my' : 'our';
-    var advocates = data.Advocates || [];
-    var extraCount = data.ExtraExecutants || 0;
-    var extraNames = data.ExtraExecutantNames || [];
-    var totalRows = Math.max(advocates.length, 1 + extraCount);
-
-    var sigRows = [
-        new TableRow({ children: [
-            new TableCell({ borders: noBorders, children: [new Paragraph({ children: [new TextRun({ text: 'Accepted:', size: 24, font: 'Times New Roman' })] })] }),
-            new TableCell({ borders: noBorders, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Executant(s):', size: 24, font: 'Times New Roman' })] })] }),
-        ]})
-    ];
-    for (var i = 0; i < totalRows; i++) {
-        var advName = i < advocates.length ? advocates[i] : '';
-        var execName = i === 0 ? (data.ApplicantName || '') : (i <= extraCount ? (extraNames[i-1] || ('Executant ' + (i+1))) : '');
-        sigRows.push(new TableRow({ children: [
-            new TableCell({ borders: noBorders, children: [new Paragraph({ children: [new TextRun({ text: advName ? ('\n\n_____________________\n' + advName) : '', size: 24, font: 'Times New Roman' })] })] }),
-            new TableCell({ borders: noBorders, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: execName ? ('\n\n_____________________\n' + execName) : '', size: 24, font: 'Times New Roman' })] })] }),
-        ]}));
-    }
-
-    var children = [
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'VAKALATNAMA', bold: true, size: 32, font: 'Times New Roman' })], spacing: { after: 200 } }),
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: (data.Court || '').toUpperCase(), bold: true, size: 24, font: 'Times New Roman' })], spacing: { after: 200 } }),
-        new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Case No. ' + (data.CaseNo || ''), size: 24, font: 'Times New Roman' })], spacing: { after: 200 } }),
-        partyTable((data.P_Title || '') + ' ' + (data.Petitioner || ''), '\u2026' + (data.PRole || 'Petitioner')),
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'VERSUS', size: 24, font: 'Times New Roman' })], spacing: { before: 120, after: 120 } }),
-        partyTable((data.D_Title || '') + ' ' + (data.Defendant || ''), '\u2026' + (data.DRole || 'Respondent')),
-        new Paragraph({ spacing: { after: 200 } }),
-        new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
+    const { Document, Paragraph, TextRun, AlignmentType, convertInchesToTwip } = docx;
+    
+    const doc = new Document({
+        sections: [{
+            properties: {
+                page: {
+                    margin: {
+                        top: convertInchesToTwip(1),
+                        right: convertInchesToTwip(1),
+                        bottom: convertInchesToTwip(1),
+                        left: convertInchesToTwip(1.5)
+                    }
+                }
+            },
             children: [
-                new TextRun({ text: iw + ', ', size: 24, font: 'Times New Roman' }),
-                new TextRun({ text: data.ApplicantName || '', bold: true, size: 24, font: 'Times New Roman' }),
-                new TextRun({ text: ', residing at ' + (data.Address || '') + ', do hereby appoint and retain:', size: 24, font: 'Times New Roman' }),
-            ],
-            spacing: { after: 200 }
-        }),
-    ];
-
-    advocates.forEach(function(adv) {
-        children.push(new Paragraph({ children: [new TextRun({ text: '\u2022 ' + adv, size: 24, font: 'Times New Roman' })], spacing: { after: 80 } }));
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: (data.Court || '').toUpperCase(),
+                            bold: true,
+                            size: 28
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: 'VAKALATNAMA',
+                            bold: true,
+                            underline: {},
+                            size: 28
+                        })
+                    ],
+                    spacing: { before: 200, after: 300 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `I, ${data.Client || ''}, son/daughter of ${data.ClientFather || ''}, residing at ${data.ClientAddress || ''}, do hereby appoint and authorize ${data.Advocate || ''}, Advocate, practicing at ${data.AdvocateAddress || ''}, to appear, act and plead for me in Case No. ${data.CaseNo || ''} pending before the ${data.Court || ''}.`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 },
+                    alignment: AlignmentType.JUSTIFIED
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'I hereby authorize the said Advocate to file, sign and verify all applications, petitions, affidavits and other documents, to appear and conduct the case on my behalf, to compromise, withdraw or otherwise deal with the case as may be deemed fit, and to do all other acts, deeds and things necessary for the proper conduct of the case.',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 300 },
+                    alignment: AlignmentType.JUSTIFIED
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `Place: ${data.Place || ''}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `Date: ${data.Date || new Date().toLocaleDateString()}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: data.Client || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: '(Client)',
+                            size: 20
+                        })
+                    ]
+                }),
+                
+                new Paragraph({
+                    spacing: { before: 300, after: 100 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'Accepted:',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: data.Advocate || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: '(Advocate)',
+                            size: 20
+                        })
+                    ]
+                })
+            ]
+        }]
     });
-
-    children.push(
-        new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
-            children: [new TextRun({ text: 'as ' + my + ' Advocate(s) to appear, act, plead and conduct the above case on ' + my + ' behalf and to do all lawful acts, deeds and things as may be necessary for the prosecution/defense of the said case.', size: 24, font: 'Times New Roman' })],
-            spacing: { before: 200, after: 300 }
-        }),
-        new Paragraph({
-            children: [
-                new TextRun({ text: 'IN WITNESS WHEREOF, ' + (isSing ? 'I' : 'We') + ' have set ' + my + ' hand(s) on this ', size: 24, font: 'Times New Roman' }),
-                new TextRun({ text: data.WitnessDate || '', bold: true, size: 24, font: 'Times New Roman' }),
-            ],
-            spacing: { after: 400 }
-        }),
-        new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder },
-            rows: sigRows
-        })
-    );
-
-    var doc = new Document({
-        sections: [{ properties: { page: { margin: {
-            top: convertInchesToTwip(1), right: convertInchesToTwip(1),
-            bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.6)
-        }}}, children: children }]
-    });
-
-    var blob = await window.docx.Packer.toBlob(doc);
-    downloadBlob(blob, 'Vakalatnama_' + (data.ApplicantName || 'Document').replace(/\s+/g, '_') + '.docx');
+    
+    const blob = await docx.Packer.toBlob(doc);
+    downloadBlob(blob, `Vakalatnama_${data.Client || 'Document'}.docx`);
 }
 
-// ─────────────────────── NEW PETITION ───────────────────────
 async function generateNewPetition(data) {
-    const { Document, Paragraph, TextRun, AlignmentType, convertInchesToTwip,
-            Table, TableRow, TableCell, WidthType, BorderStyle, PageBreak } = getDocx();
-
-    const NIL = (BorderStyle.NIL !== undefined) ? BorderStyle.NIL : ((BorderStyle.NONE !== undefined) ? BorderStyle.NONE : 'nil');
-    var solidBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
-    var solidBorders = { top: solidBorder, bottom: solidBorder, left: solidBorder, right: solidBorder };
-    var noBorder = { style: NIL, size: 0, color: 'FFFFFF' };
-    var noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
-
-    function tx(text, bold, italic) {
-        return new TextRun({ text: text, size: 28, font: 'Times New Roman', bold: !!bold, italic: !!italic });
-    }
-
-    function personTable(person, label) {
-        var rows = [
-            [(person.title || '') + ' ' + (person.name || ''), ''],
-            [(person.parent_relation || '') + ' ' + (person.parent_name || ''), ''],
-            ['Aged about ' + (person.age || '') + ' years', ''],
-            [person.occupation || '', ''],
-            ['Resident of: ' + (person.address || ''), label],
-        ];
-        return new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: { top: solidBorder, bottom: solidBorder, left: solidBorder, right: solidBorder, insideH: solidBorder, insideV: solidBorder },
-            rows: rows.map(function(r) {
-                return new TableRow({ children: [
-                    new TableCell({ width: { size: 75, type: WidthType.PERCENTAGE }, borders: solidBorders, children: [new Paragraph({ children: [tx(r[0])] })] }),
-                    new TableCell({ width: { size: 25, type: WidthType.PERCENTAGE }, borders: solidBorders, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [tx(r[1])] })] }),
-                ]});
-            })
-        });
-    }
-
-    var petitioners = data.petitioners || [];
-    var defendants = data.defendants || [];
-
-    var children = [
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [tx(data.court || '', true)], spacing: { after: 200 } }),
-        new Paragraph({ alignment: AlignmentType.RIGHT, children: [tx('Case No. ' + (data.case_no || ''))], spacing: { after: 200 } }),
-        new Paragraph({ spacing: { after: 100 } }),
-    ];
-
-    petitioners.forEach(function(pet, idx) {
-        var lbl = petitioners.length > 1 ? ('... Petitioner No. ' + (idx+1)) : '... Petitioner';
-        children.push(personTable(pet, lbl));
-        children.push(new Paragraph({ spacing: { after: 200 } }));
+    const { Document, Paragraph, TextRun, AlignmentType, convertInchesToTwip } = docx;
+    
+    const doc = new Document({
+        sections: [{
+            properties: {
+                page: {
+                    margin: {
+                        top: convertInchesToTwip(1.2),
+                        right: convertInchesToTwip(1),
+                        bottom: convertInchesToTwip(1),
+                        left: convertInchesToTwip(2)
+                    }
+                }
+            },
+            children: [
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: (data.Court || '').toUpperCase(),
+                            bold: true,
+                            size: 28
+                        })
+                    ],
+                    spacing: { after: 300 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: data.PetitionType || 'PETITION',
+                            bold: true,
+                            underline: {},
+                            size: 26
+                        })
+                    ],
+                    spacing: { after: 100 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: data.Subject || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 300 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `${data.Petitioner || ''}\t\t…Petitioner`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 100 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new TextRun({
+                            text: 'VERSUS',
+                            size: 24
+                        })
+                    ],
+                    spacing: { before: 100, after: 100 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `${data.Respondent || ''}\t\t…Respondent`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 300 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'The Petitioner above named most respectfully submits as under:',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'BRIEF FACTS',
+                            bold: true,
+                            underline: {},
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 150 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: data.Facts || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 },
+                    alignment: AlignmentType.JUSTIFIED
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'GROUNDS',
+                            bold: true,
+                            underline: {},
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 150 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: data.Grounds || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 },
+                    alignment: AlignmentType.JUSTIFIED
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: 'PRAYER',
+                            bold: true,
+                            underline: {},
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 150 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `In light of the above facts and circumstances, it is most respectfully prayed that this Hon'ble Court may be pleased to: ${data.Relief || ''}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 300 },
+                    alignment: AlignmentType.JUSTIFIED
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `Place: ${data.Place || ''}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: `Date: ${data.Date || new Date().toLocaleDateString()}`,
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 200 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: data.Petitioner || '',
+                            size: 24
+                        })
+                    ],
+                    spacing: { after: 50 }
+                }),
+                
+                new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                        new TextRun({
+                            text: '(Petitioner)',
+                            size: 20
+                        })
+                    ]
+                })
+            ]
+        }]
     });
-
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [tx('Versus', true, true)], spacing: { before: 200, after: 200 } }));
-
-    defendants.forEach(function(def, idx) {
-        var lbl = defendants.length > 1 ? ('... Defendant No. ' + (idx+1)) : '... Defendant';
-        children.push(personTable(def, lbl));
-        children.push(new Paragraph({ spacing: { after: 200 } }));
-    });
-
-    children.push(
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [tx('(The Above are registered addresses of the parties)', true, true)], spacing: { after: 400 } }),
-        new Paragraph({ children: [tx('May it please your lordships:')], spacing: { after: 100 } }),
-        new Paragraph({ children: [tx('The petitioners submit as under')], spacing: { after: 200 } }),
-        new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [tx(data.petition_text || '')], spacing: { after: 400 } }),
-        new Paragraph({ children: [tx('Place: ' + (data.place || 'Margao'))], spacing: { after: 80 } }),
-        new Paragraph({ children: [tx('Date: ' + (data.date || ''))], spacing: { after: 400 } }),
-        new Paragraph({ alignment: AlignmentType.RIGHT, children: [tx('Petitioner no.1')], spacing: { after: 200 } }),
-        new Paragraph({ children: [new PageBreak()], spacing: { after: 0 } }),
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [tx('VERIFICATION', true)], spacing: { after: 200 } })
-    );
-
-    if (petitioners.length > 0) {
-        var fp = petitioners[0];
-        children.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [tx('I ' + (fp.title||'') + ' ' + (fp.name||'') + ', ' + (fp.parent_relation||'') + ' ' + (fp.parent_name||'') + ', aged about ' + (fp.age||'') + ' years, resident of ' + (fp.address||'') + ', solemnly verify that the contents of the above petition are true to the best of my knowledge.')], spacing: { after: 200 } }));
-        children.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [tx(buildSolemnLine(data))], spacing: { after: 400 } }));
-    }
-
-    children.push(
-        buildIdTable(noBorder, noBorders, Table, TableRow, TableCell, WidthType, Paragraph, TextRun, AlignmentType),
-        new Paragraph({ children: [new PageBreak()], spacing: { after: 0 } }),
-        new Paragraph({ alignment: AlignmentType.CENTER, children: [tx('AFFIDAVIT', true)], spacing: { after: 200 } })
-    );
-
-    if (petitioners.length > 0) {
-        var fp2 = petitioners[0];
-        children.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [tx('I ' + (fp2.title||'') + ' ' + (fp2.name||'') + ', ' + (fp2.parent_relation||'') + ' ' + (fp2.parent_name||'') + ', aged about ' + (fp2.age||'') + ' years, resident of ' + (fp2.address||'') + ', state on solemn affirmation that the contents of the above paras are true to my knowledge.')], spacing: { after: 200 } }));
-        children.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [tx(buildSolemnLine(data))], spacing: { after: 400 } }));
-    }
-
-    children.push(buildIdTable(noBorder, noBorders, Table, TableRow, TableCell, WidthType, Paragraph, TextRun, AlignmentType));
-
-    var doc = new Document({
-        sections: [{ properties: { page: { margin: {
-            top: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2),
-            bottom: convertInchesToTwip(1.2), left: convertInchesToTwip(2)
-        }}}, children: children }]
-    });
-
-    var ts = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    var blob = await window.docx.Packer.toBlob(doc);
-    downloadBlob(blob, 'Petition_' + (data.case_no || 'Document').replace(/\//g,'_') + '_' + ts + '.docx');
+    
+    const blob = await docx.Packer.toBlob(doc);
+    downloadBlob(blob, `Petition_${data.Petitioner || 'Document'}.docx`);
 }
 
-function buildSolemnLine(data) {
-    try {
-        var parts = (data.date || '').split('/');
-        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        return 'Solemnly verified at ' + (data.place || 'Margao') + ' on this ' + parseInt(parts[0]) + ' day of the month of ' + months[parseInt(parts[1])-1] + ' ' + parts[2] + '.';
-    } catch(e) {
-        return 'Solemnly verified at ' + (data.place || 'Margao') + ' on this date.';
-    }
-}
-
-function buildIdTable(noBorder, noBorders, Table, TableRow, TableCell, WidthType, Paragraph, TextRun, AlignmentType) {
-    return new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder },
-        rows: [new TableRow({ children: [
-            new TableCell({ borders: noBorders, children: [new Paragraph({ children: [new TextRun({ text: 'Identified by', size: 28, font: 'Times New Roman' })] })] }),
-            new TableCell({ borders: noBorders, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Deponent', size: 28, font: 'Times New Roman' })] })] }),
-        ]})]
-    });
-}
-
-// ─────────────────────── DOWNLOAD ───────────────────────
 function downloadBlob(blob, filename) {
-    var url = window.URL.createObjectURL(blob);
-    var link = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
