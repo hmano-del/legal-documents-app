@@ -403,104 +403,150 @@ body {
   margin: 0 auto;
 }
 
+/* ═══════════════════════════════════════════
+   STACKED CARD PILE  –  click to cycle
+   ═══════════════════════════════════════════ */
+
+.documents-section {
+  padding: 6rem 2rem;
+}
+
+/* The grid becomes a centred stack container */
 .documents-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-top: 3rem;
-  /* Clip overflow so cards slide in cleanly */
-  overflow: visible;
-}
-
-/* ── Card slide-in entrance animations ── */
-.doc-card {
-  background: rgba(18, 24, 31, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 2rem;
-  transition: all 0.4s ease;
-  cursor: pointer;
+  /* tall enough for the pile */
+  min-height: 480px;
   position: relative;
-  overflow: hidden;
-
-  /* Start hidden & offset – JS adds .card-visible to trigger the slide */
-  opacity: 0;
-  will-change: transform, opacity;
 }
 
-/* Card 1 (index 0) slides in from the left */
-.doc-card[data-index="0"] {
-  transform: translateX(-120px) rotate(-4deg);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+/* ── Pile wrapper ── */
+.stack-pile {
+  position: relative;
+  width: 340px;
+  height: 420px;
+  cursor: pointer;
 }
 
-/* Card 2 (index 1) slides in from the bottom */
-.doc-card[data-index="1"] {
-  transform: translateY(100px) scale(0.92);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
-              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s;
-}
-
-/* Card 3 (index 2) slides in from the right */
-.doc-card[data-index="2"] {
-  transform: translateX(120px) rotate(4deg);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s,
-              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;
-}
-
-/* Final resting state – added by JS */
-.doc-card.card-visible {
-  opacity: 1;
-  transform: translateX(0) translateY(0) rotate(0deg) scale(1) !important;
-}
-
-/* Subtle "deal" shimmer that plays once on entry */
-@keyframes cardShimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-.doc-card.card-visible::after {
-  content: '';
+/* Every card sits absolutely inside the pile */
+.doc-card {
   position: absolute;
   inset: 0;
-  border-radius: 20px;
-  background: linear-gradient(
-    105deg,
-    transparent 40%,
-    rgba(212, 175, 55, 0.12) 50%,
-    transparent 60%
-  );
-  background-size: 200% 100%;
-  animation: cardShimmer 0.8s ease-out forwards;
+  background: linear-gradient(145deg, rgba(22, 30, 40, 0.95), rgba(14, 20, 28, 0.98));
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 24px;
+  padding: 2rem;
+  cursor: pointer;
+  user-select: none;
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.4),
+    0 1px 3px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow: hidden;
+  will-change: transform, opacity;
+
+  /* CSS custom props driven by JS */
+  --depth: 0;       /* 0 = top, 1 = second, 2 = third … */
+  --total: 3;
+
+  /* Resting stack appearance */
+  transform:
+    translateY(calc(var(--depth) * 10px))
+    translateX(calc(var(--depth) * 6px))
+    rotate(calc(var(--depth) * 3.5deg))
+    scale(calc(1 - var(--depth) * 0.04));
+  z-index: calc(100 - var(--depth) * 10);
+  transition:
+    transform 0.55s cubic-bezier(0.34, 1.42, 0.64, 1),
+    opacity   0.4s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Top card gets a gold top border glow */
+.doc-card[style*="--depth: 0"] {
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(212,175,55,0.15),
+    0 2px 8px rgba(212,175,55,0.2);
+}
+
+/* ── Fly-out animation (added by JS) ── */
+.doc-card.flying-out {
+  transform:
+    translateX(-130%)
+    translateY(-30px)
+    rotate(-25deg)
+    scale(0.85) !important;
+  opacity: 0 !important;
+  transition:
+    transform 0.52s cubic-bezier(0.4, 0, 0.8, 0.6),
+    opacity   0.45s ease !important;
   pointer-events: none;
 }
 
+/* ── Fly-in from back (added by JS for the recycled card) ── */
+.doc-card.flying-in {
+  transform:
+    translateX(80px)
+    translateY(40px)
+    rotate(12deg)
+    scale(0.82) !important;
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+/* ── Top card hover lift ── */
+.doc-card:not(.flying-out):first-child:hover,
+.stack-pile:hover .doc-card[style*="--depth: 0"] {
+  transform: translateY(-6px) rotate(0deg) scale(1.02) !important;
+  box-shadow:
+    0 16px 48px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(212,175,55,0.3),
+    0 4px 16px rgba(212,175,55,0.25);
+}
+
+/* ── "Tap to cycle" hint badge ── */
+.stack-hint {
+  position: absolute;
+  bottom: -2.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: rgba(212, 175, 55, 0.6);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  animation: hintPulse 2.4s ease-in-out infinite;
+}
+@keyframes hintPulse {
+  0%,100% { opacity: 0.5; }
+  50%      { opacity: 1;   }
+}
+
+/* ── Top card gold line ── */
 .doc-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
-  height: 4px;
+  height: 3px;
   background: linear-gradient(90deg, var(--accent), var(--accent-light));
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.4s ease;
 }
-
-.doc-card:hover {
-  transform: translateY(-8px);
-  border-color: var(--accent);
-  box-shadow: 0 16px 48px rgba(212, 175, 55, 0.2);
-}
-
-.doc-card:hover::before {
+.doc-card[style*="--depth: 0"]::before {
   transform: scaleX(1);
 }
 
+/* ── Content inside cards ── */
 .doc-card-header {
   display: flex;
   justify-content: space-between;
@@ -511,60 +557,55 @@ body {
 .doc-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.1));
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.08));
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--accent);
 }
-
-.doc-icon svg {
-  width: 28px;
-  height: 28px;
-}
+.doc-icon svg { width: 28px; height: 28px; }
 
 .doc-badge-chip {
-  padding: 0.4rem 1rem;
-  background: rgba(212, 175, 55, 0.15);
-  border-radius: 20px;
-  font-size: 0.75rem;
-  color: var(--accent);
+  padding: 0.3rem 0.8rem;
+  background: rgba(212,175,55,0.12);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 50px;
+  color: var(--accent-light);
+  font-size: 0.7rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .doc-title {
   font-family: var(--font-display);
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  font-size: 1.6rem;
+  font-weight: 700;
   color: var(--text);
+  margin-bottom: 0.75rem;
 }
 
 .doc-description {
   color: var(--text-muted);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   line-height: 1.6;
+  font-size: 0.92rem;
 }
 
 .doc-features {
   list-style: none;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
-
 .doc-features li {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   color: var(--text-muted);
-  margin-bottom: 0.75rem;
-  font-size: 0.95rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.88rem;
 }
-
-.doc-features svg {
-  color: var(--accent);
-  flex-shrink: 0;
-}
+.doc-features svg { color: var(--accent); flex-shrink: 0; }
 
 .doc-cta {
   width: 100%;
@@ -572,22 +613,22 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 0.85rem;
   background: linear-gradient(135deg, var(--accent), var(--accent-light));
   color: var(--primary);
   border: none;
   border-radius: 50px;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 10;
 }
-
 .doc-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 8px 24px rgba(212,175,55,0.4);
 }
-
 /* Features Section */
 .features-section {
   padding: 6rem 2rem;
