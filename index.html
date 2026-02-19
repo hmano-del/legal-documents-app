@@ -248,37 +248,11 @@
     </footer>
 
     <div id="modalContainer"></div>
-
-    <!-- docx library: tries jsDelivr first, then unpkg, then cdnjs as fallback -->
-    <script>
-    (function() {
-        var DOCX_URLS = [
-            'https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.umd.js',
-            'https://unpkg.com/docx@7.8.2/build/index.umd.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js'
-        ];
-        var attempt = 0;
-        function loadNext() {
-            if (attempt >= DOCX_URLS.length) {
-                console.error('All docx CDN sources failed.');
-                return;
-            }
-            var s = document.createElement('script');
-            s.src = DOCX_URLS[attempt++];
-            s.onload = function() { console.log('docx loaded: ' + s.src); };
-            s.onerror = function() {
-                console.warn('docx load failed: ' + s.src);
-                document.head.removeChild(s);
-                loadNext();
-            };
-            document.head.appendChild(s);
-        }
-        loadNext();
-    })();
-    </script>
+<!-- JSZip: tiny, always available, used to build .docx files in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/particles.js"></script>
     <script src="js/animations.js"></script>
     <script src="js/forms.js"></script>
-    <script src="js/docgen.js" defer></script>
+    <script src="js/docgen.js"></script>
 </body>
 </html>
